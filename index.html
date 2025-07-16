@@ -18,31 +18,46 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            padding: 20px;
+            padding: 20px; /* Default padding for smaller screens */
             box-sizing: border-box;
         }
+        /* Responsive padding for game-container */
         .game-container {
             background-color: #ffffff;
             border-radius: 16px;
-            padding: 32px;
+            padding: 20px; /* Default padding for smaller screens */
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 800px; /* Adjusted max-width for 3x4 grid */
-            width: 100%;
+            max-width: 800px; /* Max width for desktop */
+            width: 100%; /* Will take full width on mobile */
             box-sizing: border-box;
         }
+        @media (min-width: 640px) { /* Tailwind's sm breakpoint */
+            .game-container {
+                padding: 32px; /* Restore larger padding on larger screens */
+            }
+        }
+
         #game-board {
             min-height: 300px; /* Ensure board has a minimum height */
             background-color: #e2e8f0; /* Light blue-gray for the board */
             border: 2px solid #cbd5e0; /* Slightly darker border */
             grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 columns for 3x4 grid */
             grid-template-rows: repeat(3, minmax(0, 1fr)); /* 3 rows for 3x4 grid */
+            gap: 8px; /* Tailwind's gap-2 */
+            padding: 16px; /* Tailwind's p-4 */
+            border-radius: 8px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06); /* Tailwind's shadow-inner */
+            width: 100%;
+            max-width: 450px; /* Limit board width slightly for better mobile fit if container is wider */
+            margin-left: auto;
+            margin-right: auto;
         }
         .workspace-cell {
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 90px; /* Minimum height for cells */
+            min-height: 90px; /* Minimum height for cells, good for touch targets */
             border: 1px dashed #a0aec0; /* Dashed border for empty cells */
             border-radius: 8px;
             transition: background-color 0.2s ease-in-out;
@@ -62,7 +77,7 @@
             align-items: center;
             width: calc(100% - 8px); /* Account for padding */
             height: calc(100% - 8px); /* Account for padding */
-            padding: 8px;
+            padding: 8px; /* Good padding for items */
             border-radius: 8px;
             color: white;
             font-weight: 600;
@@ -171,6 +186,14 @@
         #level-select:focus {
             border-color: #3b82f6;
         }
+        /* Mobile optimization for buttons */
+        .button-group {
+            display: flex;
+            flex-wrap: wrap; /* Allow buttons to wrap onto new lines */
+            justify-content: center;
+            margin-top: 2rem; /* mt-8 */
+            gap: 1rem; /* space-x-4 equivalent for wrapping */
+        }
     </style>
 </head>
 <body>
@@ -200,7 +223,7 @@
         </div>
 
         <!-- Control Buttons -->
-        <div class="flex justify-center mt-8 space-x-4">
+        <div class="button-group"> <!-- Changed class for mobile optimization -->
             <button id="check-layout-btn" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300 ease-in-out">
                 Check Layout
             </button>
