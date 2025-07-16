@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratory Layout Challenge</title>
+    <!-- Tailwind CSS CDN for easy styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for 'Inter' -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Inline styles for the game */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 800px; /* Adjusted max-width for 3x4 grid */
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #game-board {
+            min-height: 300px; /* Ensure board has a minimum height */
+            background-color: #e2e8f0; /* Light blue-gray for the board */
+            border: 2px solid #cbd5e0; /* Slightly darker border */
+            grid-template-columns: repeat(4, minmax(0, 1fr)); /* 4 columns for 3x4 grid */
+            grid-template-rows: repeat(3, minmax(0, 1fr)); /* 3 rows for 3x4 grid */
+        }
+        .workspace-cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90px; /* Minimum height for cells */
+            border: 1px dashed #a0aec0; /* Dashed border for empty cells */
+            border-radius: 8px;
+            transition: background-color 0.2s ease-in-out;
+            cursor: grab; /* Indicate draggable */
+        }
+        .workspace-cell.drag-over {
+            background-color: #bfdbfe; /* Light blue when dragging over */
+        }
+        .workspace-cell.cursor-not-allowed { /* Style for fixed cells */
+            cursor: not-allowed;
+            background-color: #cbd5e0; /* Slightly darker background for fixed cells */
+        }
+        .workspace-item {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: calc(100% - 8px); /* Account for padding */
+            height: calc(100% - 8px); /* Account for padding */
+            padding: 8px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.1s ease-in-out;
+            cursor: grab;
+            user-select: none; /* Prevent text selection during drag */
+        }
+        .workspace-item:active {
+            cursor: grabbing;
+        }
+        .workspace-item[draggable="false"] { /* Style for non-draggable items */
+            cursor: not-allowed;
+            opacity: 0.7;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1); /* Inner shadow for fixed */
+        }
+        .workspace-item span {
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.25rem;
+        }
+        /* Specific style for the Entry Door */
+        .door-item {
+            background-color: #4a5568; /* Darker gray for door */
+            color: #e2e8f0;
+            font-weight: 700;
+            cursor: not-allowed;
+            opacity: 1; /* Keep door fully opaque */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .feedback-good {
+            background-color: #d1fae5; /* Green-100 */
+            color: #065f46; /* Green-800 */
+        }
+        .feedback-average {
+            background-color: #fef3c7; /* Yellow-100 */
+            color: #92400e; /* Yellow-800 */
+        }
+        .feedback-poor {
+            background-color: #fee2e2; /* Red-100 */
+            color: #991b1b; /* Red-800 */
+        }
+        /* Custom button styles for a more appealing look */
+        .px-6.py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+        .bg-blue-600 {
+            background-image: linear-gradient(to bottom right, #3b82f6, #2563eb);
+            border: none;
+        }
+        .bg-blue-600:hover {
+            background-image: linear-gradient(to bottom right, #2563eb, #1d4ed8);
+        }
+        .bg-red-500 {
+            background-image: linear-gradient(to bottom right, #ef4444, #dc2626);
+            border: none;
+        }
+        .bg-red-500:hover {
+            background-image: linear-gradient(to bottom right, #dc2626, #b91c1c);
+        }
+        .bg-green-600 {
+            background-image: linear-gradient(to bottom right, #10b981, #059669);
+            border: none;
+        }
+        .bg-green-600:hover {
+            background-image: linear-gradient(to bottom right, #059669, #047857);
+        }
+        .bg-gray-600 { /* New style for solution button */
+            background-image: linear-gradient(to bottom right, #6b7280, #4b5563);
+            border: none;
+        }
+        .bg-gray-600:hover {
+            background-image: linear-gradient(to bottom right, #4b5563, #374151);
+        }
+        .hidden {
+            display: none;
+        }
+        #solution-explanation {
+            margin-top: 16px;
+            padding: 12px;
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 0.9rem;
+            color: #4a5568;
+            line-height: 1.5;
+        }
+        /* Style for the level selector dropdown */
+        #level-select {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            background-color: #f8fafc;
+            font-size: 1rem;
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 16px;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        #level-select:focus {
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-4">Laboratory Layout Challenge</h1>
+        <p class="text-gray-600 mb-6 leading-relaxed">
+            Welcome, Lab Manager! Your mission is to optimize the laboratory floor plan. Drag and drop the five workspaces to create the most efficient flow for specimen processing. A well-designed layout reduces errors and speeds up results!
+        </p>
+
+        <!-- Level Selector -->
+        <div class="mb-6">
+            <label for="level-select" class="block text-gray-700 text-lg font-semibold mb-2">Choose Your Layout Challenge:</label>
+            <select id="level-select" class="w-full max-w-xs mx-auto">
+                <!-- Options will be populated by JavaScript -->
+            </select>
+        </div>
+
+        <!-- Level Information -->
+        <div class="mb-6">
+            <h2 id="level-title" class="text-2xl font-bold text-gray-700"></h2>
+            <p id="level-description" class="text-gray-600"></p>
+        </div>
+
+        <!-- Game Board (3x4 Grid) -->
+        <div id="game-board" class="grid gap-2 p-4 rounded-lg shadow-inner w-full max-w-lg mx-auto">
+            <!-- Workspace cells will be dynamically generated here by JavaScript -->
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex justify-center mt-8 space-x-4">
+            <button id="check-layout-btn" class="px-6 py-3 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300 ease-in-out">
+                Check Layout
+            </button>
+            <button id="show-solution-btn" class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300 ease-in-out hidden">
+                Show Solution
+            </button>
+            <button id="reset-btn" class="px-6 py-3 bg-red-500 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition duration-300 ease-in-out">
+                Reset Level
+            </button>
+        </div>
+
+        <!-- Feedback Message Area -->
+        <div id="feedback-message" class="mt-8 p-4 rounded-lg text-center font-bold text-xl">
+            Select a level and start optimizing!
+        </div>
+
+        <!-- Solution Explanation Area -->
+        <div id="solution-explanation" class="hidden"></div>
+    </div>
+
+    <script>
+        // Define the laboratory workspaces with their IDs, names, and Tailwind CSS background colors.
+        const workspaces = [
+            { id: 'collection', name: 'Specimen Collection', color: 'bg-indigo-600' },
+            { id: 'reception', name: 'Specimen Reception', color: 'bg-purple-600' },
+            { id: 'processing', name: 'Specimen Processing', color: 'bg-pink-600' },
+            { id: 'analysis', name: 'Specimen Analysis', color: 'bg-teal-600' },
+            { id: 'results', name: 'Results Management', color: 'bg-orange-600' }
+        ];
+
+        // Define the Entry Door as a special, fixed element
+        const door = { id: 'door', name: 'Entry Door', color: 'bg-gray-700', isDoor: true };
+
+        // Define the levels with their specific challenges, target inefficiencies, and optimal solutions.
+        const levels = [
+            {
+                levelId: 1,
+                title: 'Straight Line Flow',
+                description: 'Arrange all five workspaces to create a single, continuous straight line path for specimens, starting from Collection near the Entry Door.',
+                targetInefficiency: 2, // Allows for one "bend" or distance-2 step in a 3x4 grid
+                initialLayout: [
+                    null, null, null, null,
+                    null, null, null, null,
+                    'door', null, null, null // Door at bottom-left corner (index 8)
+                ],
+                workspacesToUse: ['collection', 'reception', 'processing', 'analysis', 'results'], // All are movable
+                // Optimal solution for Level 1: A clear straight line with one turn
+                optimalLayout: [
+                    null, null, null, null,
+                    'collection', 'reception', 'processing', null,
+                    'door', 'analysis', 'results', null
+                ],
+                solutionExplanation: "This layout forms a clear, mostly straight path. Specimens move horizontally through Collection, Reception, and Processing, then turn to move horizontally through Analysis and Results. This minimizes turns and maintains a clear, efficient flow from the entry door."
+            },
+            {
+                levelId: 2,
+                title: 'Letter L Flow',
+                description: 'Form a distinct "L" shape with the workspaces. "Processing" is fixed in the center. Ensure the flow starts from "Collection" near the door and ends at "Results".',
+                targetInefficiency: 1, // Aim for perfect adjacency for the L shape
+                initialLayout: [
+                    null, null, null, null,
+                    null, 'processing', null, null, // Fixed 'processing' (index 5)
+                    'door', null, null, null // Door at bottom-left corner (index 8)
+                ],
+                workspacesToUse: ['collection', 'reception', 'analysis', 'results'], // These are the draggable ones
+                // Optimal solution for Level 2: An L-shape with processing at the corner
+                optimalLayout: [
+                    null, null, null, null,
+                    'collection', 'processing', 'analysis', null,
+                    'door', 'reception', 'results', null
+                ],
+                solutionExplanation: "This layout forms a perfect 'L' shape with 'Processing' at its corner. Specimens move from 'Collection' to 'Processing', then turn to flow through 'Analysis' and 'Results'. 'Reception' is placed to ensure a direct path from the door to 'Collection'."
+            },
+            {
+                levelId: 3,
+                title: 'Letter U Flow',
+                description: 'Create a clear "U" shaped flow for specimen processing. "Collection" and "Results Management" are fixed points, and the flow starts from the Entry Door.',
+                targetInefficiency: 1, // Allows for one "bend" or distance-2 step in the U-shape
+                initialLayout: [
+                    'collection', null, null, null, // Fixed 'collection' (index 0)
+                    null, null, null, null,
+                    'door', null, null, 'results' // Door at bottom-left (index 8), Results at bottom-right (index 11)
+                ],
+                workspacesToUse: ['reception', 'processing', 'analysis'], // These are the draggable ones
+                // Optimal solution for Level 3: A U-shape
+                optimalLayout: [
+                    'collection', 'reception', 'processing', 'analysis',
+                    null, null, null, null,
+                    'door', null, null, 'results'
+                ],
+                solutionExplanation: "This layout forms a distinct 'U' shape. Specimens start at the fixed 'Collection', move horizontally through 'Reception', 'Processing', and 'Analysis', then turn to flow downwards to the fixed 'Results'. This design minimizes backtracking and keeps the process moving forward efficiently."
+        },
+            {
+                levelId: 4,
+                title: 'Square Flow',
+                description: 'Arrange the workspaces to form a square or rectangular flow. "Reception" and "Analysis" are fixed. The flow begins from the Entry Door.',
+                targetInefficiency: 3, // Allows for some deviation in a square shape
+                initialLayout: [
+                    null, 'reception', null, null, // Fixed 'reception' (index 1)
+                    null, null, 'analysis', null, // Fixed 'analysis' (index 6)
+                    'door', null, null, null // Door at bottom-left corner (index 8)
+                ],
+                workspacesToUse: ['collection', 'processing', 'results'], // These are the draggable ones
+                // Optimal solution for Level 4: A square/rectangular flow
+                optimalLayout: [
+                    'collection', 'reception', null, null,
+                    'processing', null, 'analysis', null,
+                    'door', 'results', null, null
+                ],
+                solutionExplanation: "This layout creates a compact rectangular flow. Specimens enter at 'Collection', move to the fixed 'Reception', then turn to 'Processing' and the fixed 'Analysis', before completing the 'square' by reaching 'Results'. This design optimizes the flow within a confined area, minimizing long travel paths."
+        },
+            {
+                levelId: 5,
+                title: 'Compact Cluster (Sphere)',
+                description: 'Create the most compact and centralized layout possible for all workspaces around the Entry Door, minimizing overall travel distance. Think of it as a "sphere" of activity.',
+                targetInefficiency: 2, // Allows for some inefficiency due to tight packing
+                initialLayout: [
+                    null, null, null, null,
+                    null, null, null, null,
+                    null, 'door', null, null // Door at center-bottom (index 9)
+                ],
+                workspacesToUse: ['collection', 'reception', 'processing', 'analysis', 'results'], // All are movable
+                // Optimal solution for Level 5: A compact cluster around the door
+                optimalLayout: [
+                    null, 'collection', 'reception', null,
+                    'processing', 'analysis', 'results', null,
+                    null, 'door', null, null
+                ],
+                solutionExplanation: "This layout focuses on creating a highly compact and centralized workflow. Workspaces are clustered closely together around the Entry Door, minimizing the overall travel distance for specimens and staff. This 'spherical' approach prioritizes density and short, interconnected paths, reducing wasted movement."
+        },
+            {
+                levelId: 6,
+                title: 'S-Curve Flow',
+                description: 'Design a winding "S" shaped path for specimens. This layout is efficient for maximizing process length in a rectangular space.',
+                targetInefficiency: 3, // S-curves naturally involve more turns
+                initialLayout: [
+                    null, null, null, null,
+                    null, null, null, null,
+                    'door', null, null, null
+                ],
+                workspacesToUse: ['collection', 'reception', 'processing', 'analysis', 'results'],
+                optimalLayout: [
+                    null, null, null, 'analysis',
+                    'collection', 'reception', 'processing', null,
+                    'door', null, null, 'results'
+                ],
+                solutionExplanation: "This layout creates a serpentine 'S' curve. Specimens move from 'Collection' to 'Reception' and 'Processing', then turn to flow back across the grid through 'Analysis', before turning again to reach 'Results'. This maximizes the use of space while maintaining flow."
+        },
+            {
+                levelId: 7,
+                title: 'Spine/Backbone Flow',
+                description: 'Create a central "spine" for processing, with other areas branching off. "Processing" will act as your central backbone.',
+                targetInefficiency: 2, // Allows for some branching inefficiency
+                initialLayout: [
+                    null, null, null, null,
+                    null, 'processing', null, null, // Fixed 'processing' as the spine
+                    'door', null, null, null
+                ],
+                workspacesToUse: ['collection', 'reception', 'analysis', 'results'],
+                optimalLayout: [
+                    null, 'collection', null, null,
+                    'reception', 'processing', 'analysis', 'results',
+                    'door', null, null, null
+                ],
+                solutionExplanation: "In this 'Spine' layout, 'Processing' forms the central backbone. 'Reception' feeds into it from one side, and 'Analysis' and 'Results' extend from the other. 'Collection' is placed near the door to start the flow towards the spine, optimizing centralized operations."
+        },
+            {
+                levelId: 8,
+                title: 'Zig-Zag Flow',
+                description: 'Implement a tight zig-zag pattern for specimen movement. This is effective in long, narrow spaces.',
+                targetInefficiency: 3, // Multiple sharp turns
+                initialLayout: [
+                    null, null, null, null,
+                    null, null, null, null,
+                    'door', null, null, null
+                ],
+                workspacesToUse: ['collection', 'reception', 'processing', 'analysis', 'results'],
+                optimalLayout: [
+                    null, null, 'processing', 'analysis',
+                    'collection', 'reception', null, null,
+                    'door', null, 'results', null
+                ],
+                solutionExplanation: "This layout creates a distinct zig-zag flow. Specimens move from 'Collection' to 'Reception', then zig-zag upwards to 'Processing', then across to 'Analysis', and finally downwards to 'Results'. This pattern maximizes linear movement within a constrained space through controlled turns."
+            }
+        ];
+
+    // Get references to DOM elements.
+    const gameBoard = document.getElementById('game-board');
+    const checkLayoutBtn = document.getElementById('check-layout-btn');
+    const showSolutionBtn = document.getElementById('show-solution-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const feedbackMessage = document.getElementById('feedback-message');
+    const levelTitle = document.getElementById('level-title');
+    const levelDescription = document.getElementById('level-description');
+    const solutionExplanationDiv = document.getElementById('solution-explanation');
+    const levelSelect = document.getElementById('level-select'); // Level selection dropdown
+
+    let draggedItem = null;
+    let currentLayout = Array(12).fill(null);
+    let currentLevelIndex = 0; // Will be set by dropdown
+    let currentLevel = levels[currentLevelIndex];
+    const GRID_COLS = 4;
+    let hasAttempted = false;
+
+    /**
+     * Populates the level selection dropdown.
+     */
+    function populateLevelSelect() {
+        levelSelect.innerHTML = ''; // Clear existing options
+        levels.forEach((level, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `Level ${level.levelId}: ${level.title}`;
+            levelSelect.appendChild(option);
+        });
+        // Set initial selection to the first level
+        levelSelect.value = currentLevelIndex;
+    }
+
+    /**
+     * Initializes the game board based on the currently selected level.
+     */
+    function initializeBoard() {
+        // Get the selected level index from the dropdown
+        currentLevelIndex = parseInt(levelSelect.value);
+        currentLevel = levels[currentLevelIndex];
+
+        gameBoard.innerHTML = '';
+        currentLayout.fill(null);
+
+        let availableCellIndices = Array.from({ length: 12 }, (_, i) => i);
+        let fixedPositions = new Set();
+
+        if (currentLevel.initialLayout) {
+            currentLevel.initialLayout.forEach((id, index) => {
+                if (id) {
+                    currentLayout[index] = id;
+                    fixedPositions.add(index);
+                    availableCellIndices = availableCellIndices.filter(i => i !== index);
+                }
+            });
+        }
+
+        shuffleArray(availableCellIndices);
+
+        let draggableWorkspaces = currentLevel.workspacesToUse.map(id => workspaces.find(ws => ws.id === id));
+
+        draggableWorkspaces.forEach((ws, index) => {
+            const position = availableCellIndices[index];
+            currentLayout[position] = ws.id;
+        });
+
+        renderBoard(fixedPositions);
+
+        levelTitle.textContent = `Level ${currentLevel.levelId}: ${currentLevel.title}`;
+        levelDescription.textContent = currentLevel.description;
+
+        feedbackMessage.textContent = 'Arrange the rooms and click "Check Layout"!';
+        feedbackMessage.className = 'mt-8 p-4 rounded-lg text-center font-bold text-xl';
+        checkLayoutBtn.classList.remove('hidden');
+        showSolutionBtn.classList.add('hidden'); // Hide solution button initially
+        resetBtn.textContent = 'Reset Level';
+        solutionExplanationDiv.classList.add('hidden');
+        hasAttempted = false;
+    }
+
+    /**
+     * Renders the game board based on the currentLayout array.
+     * @param {Set} fixedPositions - A set of indices for fixed cells.
+     */
+    function renderBoard(fixedPositions = new Set()) {
+        gameBoard.innerHTML = '';
+        for (let i = 0; i < 12; i++) {
+            const cell = document.createElement('div');
+            cell.classList.add('workspace-cell');
+            cell.dataset.index = i;
+
+            if (currentLayout[i]) {
+                const itemData = currentLayout[i] === 'door' ? door : workspaces.find(w => w.id === currentLayout[i]);
+                const item = createWorkspaceItem(itemData, fixedPositions.has(i));
+                cell.appendChild(item);
+            }
+
+            if (!fixedPositions.has(i)) {
+                cell.addEventListener('dragover', handleDragOver);
+                cell.addEventListener('dragleave', handleDragLeave);
+                cell.addEventListener('drop', handleDrop);
+            } else {
+                cell.classList.add('bg-gray-300', 'cursor-not-allowed', 'shadow-inner');
+            }
+            gameBoard.appendChild(cell);
+        }
+    }
+
+    /**
+     * Creates an HTML element for a given workspace or the door.
+     * @param {Object} itemData - The item object { id, name, color, isDoor? }.
+     * @param {boolean} isFixed - True if the item is fixed and not draggable.
+     * @returns {HTMLElement} The created div element.
+     */
+    function createWorkspaceItem(itemData, isFixed = false) {
+        const item = document.createElement('div');
+        item.classList.add('workspace-item', itemData.color);
+        item.setAttribute('draggable', isFixed ? 'false' : 'true');
+        item.dataset.id = itemData.id;
+        item.innerHTML = `<span>${itemData.name}</span>`;
+
+        if (itemData.isDoor) {
+            item.classList.add('door-item');
+            item.setAttribute('draggable', 'false');
+        }
+
+        if (isFixed && !itemData.isDoor) {
+            item.classList.add('opacity-70', 'cursor-not-allowed');
+        } else if (!isFixed && !itemData.isDoor) {
+            item.addEventListener('dragstart', handleDragStart);
+        }
+        return item;
+    }
+
+    /**
+     * Shuffles an array in place using the Fisher-Yates (Knuth) algorithm.
+     * @param {Array} array - The array to shuffle.
+     */
+    function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+    }
+
+    /**
+     * Handles the 'dragstart' event when a workspace item is dragged.
+     * Stores the ID of the dragged item.
+     * @param {Event} e - The dragstart event.
+     */
+    function handleDragStart(e) {
+        draggedItem = e.target.closest('.workspace-item');
+        if (!draggedItem) return;
+
+        e.dataTransfer.setData('text/plain', draggedItem.dataset.id);
+        setTimeout(() => e.target.classList.add('opacity-50'), 0);
+    }
+
+    /**
+     * Handles the 'dragover' event, allowing elements to be dropped.
+     * Prevents default to enable dropping.
+     * @param {Event} e - The dragover event.
+     */
+    function handleDragOver(e) {
+        e.preventDefault();
+        if (!e.currentTarget.classList.contains('cursor-not-allowed')) {
+            e.currentTarget.classList.add('drag-over');
+        }
+    }
+
+    /**
+     * Handles the 'dragleave' event, removing the visual indicator.
+     * @param {Event} e - The dragleave event.
+     */
+    function handleDragLeave(e) {
+        e.currentTarget.classList.remove('drag-over');
+    }
+
+    /**
+     * Handles the 'drop' event when a workspace item is dropped onto a cell.
+     * Swaps or moves the item to the new cell.
+     * @param {Event} e - The drop event.
+     */
+    function handleDrop(e) {
+        e.preventDefault();
+        const targetCell = e.currentTarget;
+        targetCell.classList.remove('drag-over');
+
+        if (!draggedItem) return;
+
+        if (targetCell.classList.contains('cursor-not-allowed')) {
+            draggedItem.classList.remove('opacity-50');
+            draggedItem = null;
+            return;
+        }
+
+        const draggedFromCell = draggedItem.closest('.workspace-cell');
+        const draggedFromIndex = parseInt(draggedFromCell.dataset.index);
+        const targetIndex = parseInt(targetCell.dataset.index);
+
+        const targetWorkspaceId = currentLayout[targetIndex];
+
+        currentLayout[targetIndex] = draggedItem.dataset.id;
+        currentLayout[draggedFromIndex] = targetWorkspaceId;
+
+        if (targetWorkspaceId) {
+            const targetItem = targetCell.querySelector('.workspace-item');
+            draggedFromCell.appendChild(targetItem);
+        } else {
+            draggedFromCell.innerHTML = '';
+        }
+        targetCell.appendChild(draggedItem);
+
+        draggedItem.classList.remove('opacity-50');
+        draggedItem = null;
+    }
+
+    /**
+     * Calculates the Manhattan distance between two grid cell indices.
+     * @param {number} index1 - The first cell index.
+     * @param {number} index2 - The second cell index.
+     * @returns {number} The Manhattan distance.
+     */
+    function getManhattanDistance(index1, index2) {
+        const r1 = Math.floor(index1 / GRID_COLS);
+        const c1 = index1 % GRID_COLS;
+        const r2 = Math.floor(index2 / GRID_COLS);
+        const c2 = index2 % GRID_COLS;
+        return Math.abs(r1 - r2) + Math.abs(c1 - c2);
+    }
+
+    /**
+     * Evaluates the current laboratory layout based on predefined optimal flow.
+     * Provides feedback (Excellent, Good, Needs Improvement, Poor) and a score.
+     */
+    function checkLayout() {
+        hasAttempted = true;
+        let totalInefficiency = 0;
+
+        const currentPositions = {};
+        currentLayout.forEach((id, index) => {
+            if (id && id !== 'door') {
+                currentPositions[id] = index;
+            }
+        });
+
+        const flowSteps = [
+            'collection', 'reception', 'processing', 'analysis', 'results'
+        ];
+
+        for (let i = 0; i < flowSteps.length - 1; i++) {
+            const currentStepId = flowSteps[i];
+            const nextStepId = flowSteps[i + 1];
+
+            const currentPos = currentPositions[currentStepId];
+            const nextPos = currentPositions[nextStepId];
+
+            if (currentPos !== undefined && nextPos !== undefined) {
+                const distance = getManhattanDistance(currentPos, nextPos);
+                totalInefficiency += Math.max(0, distance - 1);
+            }
+        }
+
+        let message = '';
+        let feedbackClass = '';
+
+        if (totalInefficiency <= currentLevel.targetInefficiency) {
+            message = `Level ${currentLevel.levelId} Passed! Your layout achieved an inefficiency of ${totalInefficiency} (target: ${currentLevel.targetInefficiency}).`;
+            feedbackClass = 'feedback-good';
+            checkLayoutBtn.classList.add('hidden');
+            showSolutionBtn.classList.add('hidden');
+        } else {
+            message = `Level ${currentLevel.levelId} Failed. Your layout has an inefficiency of ${totalInefficiency}. The target is ${currentLevel.targetInefficiency}. Try again!`;
+            feedbackClass = 'feedback-poor';
+            checkLayoutBtn.classList.remove('hidden');
+            if (hasAttempted) {
+                showSolutionBtn.classList.remove('hidden');
+            }
+        }
+
+        feedbackMessage.textContent = message;
+        feedbackMessage.className = `mt-8 p-4 rounded-lg text-center font-bold text-xl ${feedbackClass}`;
+        solutionExplanationDiv.classList.add('hidden');
+    }
+
+    /**
+     * Displays the optimal solution for the current level.
+     */
+    function showSolution() {
+        currentLayout = [...currentLevel.optimalLayout];
+
+        let fixedPositions = new Set();
+        if (currentLevel.initialLayout) {
+            currentLevel.initialLayout.forEach((id, index) => {
+                if (id) {
+                    fixedPositions.add(index);
+                }
+            });
+        }
+        renderBoard(fixedPositions);
+
+        feedbackMessage.textContent = 'Solution displayed! Click "Reset Level" to try again.';
+        feedbackMessage.className = 'mt-8 p-4 rounded-lg text-center font-bold text-xl feedback-average';
+
+        solutionExplanationDiv.innerHTML = `<strong>Why this layout works:</strong><br>${currentLevel.solutionExplanation}`;
+        solutionExplanationDiv.classList.remove('hidden');
+
+        checkLayoutBtn.classList.add('hidden');
+        showSolutionBtn.classList.add('hidden');
+        resetBtn.classList.remove('hidden');
+        resetBtn.textContent = 'Reset Level';
+    }
+
+    // Event listeners
+    checkLayoutBtn.addEventListener('click', checkLayout);
+    showSolutionBtn.addEventListener('click', showSolution);
+    resetBtn.addEventListener('click', initializeBoard);
+    levelSelect.addEventListener('change', initializeBoard);
+
+    // Initial setup when the page loads
+    // Using DOMContentLoaded for better WordPress compatibility
+    document.addEventListener('DOMContentLoaded', () => {
+        populateLevelSelect();
+        initializeBoard();
+    });
+</script>
+</body>
+</html>
